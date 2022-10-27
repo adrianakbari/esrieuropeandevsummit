@@ -1,2 +1,6 @@
 # ansible/vault.yml
 files/*
+*.pem
+*.p12
+*.key
+*.pub

@@ -1,0 +1,3 @@
+JAVA_HOME=/data/arcgis/jdk
+CLASSPATH=.:/data/arcgis/jdk/lib/tools.jar:/data/arcgis/jdk/lib/dt.jar
+PATH=/data/arcgis/jdk/bin:/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin

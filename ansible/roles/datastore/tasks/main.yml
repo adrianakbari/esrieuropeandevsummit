@@ -1,0 +1,127 @@
+---
+
+
+# Need 2 steps, known issue with ansible. See for example https://github.com/xsnippet/xsnippet-infra/pull/26/commits/04b0c74870a15429f71e924600135bba8948f3ee
+
+- name: datastore_start_check_existance_of_installation_sources
+  stat:
+    path: /data/installsource/ArcGISDataStore_Linux
+  register: installsourceArcGISDataStore_Linux
+
+- name: First download ArcGIS_DataStore_Linux tar file 
+  get_url:
+    url: "https://gisautomation.s3.eu-central-1.amazonaws.com/ArcGIS_DataStore_Linux_{{ arcgisdatastorefileversion }}.tar.gz"
+    dest: "/data/tmp/ArcGIS_DataStore_Linux_{{ arcgisdatastorefileversion }}.tar.gz"
+    tmp_dest: /data/tmp
+  when: not installsourceArcGISDataStore_Linux.stat.exists
+
+# - name: Copy install files 
+#   copy:
+#     src: /data/ansible/files/ArcGIS_DataStore_Linux_{{ arcgisdatastorefileversion }}.tar.gz
+#     dest: /data/tmp/ArcGIS_DataStore_Linux_{{ arcgisdatastorefileversion }}.tar.gz
+#     owner: azureuser
+#     group: azureuser
+#     mode: '0640'
+#   when: not installsourceArcGISDataStore_Linux.stat.exists
+
+- name: Extract ArcGIS_DataStore_Linux tar file
+  unarchive:
+    src: "/data/tmp/ArcGIS_DataStore_Linux_{{ arcgisdatastorefileversion }}.tar.gz"
+    dest: /data/installsource
+    remote_src: true
+  when: not installsourceArcGISDataStore_Linux.stat.exists
+
+- name: Cleanup ArcGIS_DataStore_Linux tar.gz file
+  file:
+    state: absent
+    path: "/data/tmp/ArcGIS_DataStore_Linux_{{ arcgisdatastorefileversion }}.tar.gz"
+
+- name: Install ArcGIS_DataStore_Linux
+  shell: cd /data/installsource/ArcGISDataStore_Linux/;./Setup -m silent -l yes -d /data 2>&1| tee /data/tmp/install.log
+  become_user: azureuser
+  args:
+    creates: /data/arcgis/datastore/startdatastore.sh
+  register: installeddatastore
+
+- name: arcgisds install debug
+  debug:
+    var: installeddatastore
+
+- name: Copy arcgis service file to enable the arcgis service
+  copy:
+    src: /data/arcgis/datastore/framework/etc/scripts/arcgisdatastore.service
+    remote_src: yes
+    dest: /etc/systemd/system
+    mode: '600'
+# Ansible modules do NOT work in combination with specific sudo rules.
+# Because of this using shell commands to manually enable arcgisdatastore systemd service and start the systemd service
+- name: Check if service is disabled
+  shell: "sudo systemctl status arcgisdatastore|grep Loaded|grep '; disabled;'|wc -l"
+  args:
+    warn: false
+  register: arcgisdatastore_disabled
+  changed_when: false
+
+- name: Enable service if disabled
+  shell: sudo systemctl enable arcgisdatastore
+  args:
+    warn: false
+  when: arcgisdatastore_disabled.stdout|int == 1
+
+- name: stop datastore
+  shell: /data/arcgis/datastore/stopdatastore.sh
+  become_user: azureuser
+  when: installeddatastore.changed
+
+- name: start datastore
+  shell: /data/arcgis/datastore/startdatastore.sh
+  become_user: azureuser
+  when: installeddatastore.changed
+
+- name: wait for datastore to restart
+  wait_for: timeout=30
+  when: installeddatastore.changed
+
+- name: Check if service is running
+  shell: "systemctl status arcgisdatastore|grep Active:|grep 'active (running)'|wc -l"
+  args:
+    warn: false
+  register: arcgisdatastore_isrunning
+  changed_when: false
+
+- name: Start service if it is not running
+  shell: sudo systemctl start arcgisdatastore
+  args:
+    warn: false
+  when: arcgisdatastore_isrunning.stdout|int == 0
+
+- name: wait for datastore to start
+  wait_for: timeout=30
+  when: installeddatastore.changed
+
+- name: Check if datastore is registered at the server by checking existing folder
+  stat:
+    path: /data/arcgis/datastore/usr/arcgisdatastore/
+  register: stat_result
+
+- name: get ags server fqdn
+  shell: "nslookup {{groups['arcgisserver'][0]}} | grep 'Name' | cut -c 7-"
+  tags: dev
+  become_user: azureuser
+  register: arcgisserverfqdn
+
+- name: arcgisds get fqdn debug
+  debug:
+    var: arcgisserverfqdn
+  tags: dev
+# for azure you need to dynamically get fqdn of the arcgis machine because with lack of dns zone the dns prefix might differ in each implementation. for an organization with dns zone use {{ arcgisserver }} stored in vault
+- name: register datastore with ArcGIS Server
+  shell: "/data/arcgis/datastore/tools/configuredatastore.sh https://{{ arcgisserverfqdn['stdout'] }}:6443 siteadmin {{ siteadminpassword }} /data/arcgis/datastore/usr/arcgisdatastore --stores relational"
+  become_user: azureuser
+  register: registerdswithserver
+  #when: installeddatastore.changed
+  when: stat_result.stat.exists == false
+
+- name: arcgisds register debug
+  debug:
+    var: registerdswithserver

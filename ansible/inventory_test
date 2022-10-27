@@ -1,0 +1,14 @@
+
+[arcgisdatastore]
+dbvm1 ansible_become=true versie=test ansible_ssh_common_args='-o StrictHostKeyChecking=no'
+
+[arcgisserver]
+gisvm1 ansible_become=true versie=test ansible_ssh_common_args='-o StrictHostKeyChecking=no'
+
+[arcgisportal]
+webvm1 ansible_become=true versie=test ansible_ssh_common_args='-o StrictHostKeyChecking=no'
+
+[arcgiswebportal]
+webvm1 ansible_become=true versie=test ansible_ssh_common_args='-o StrictHostKeyChecking=no'
+
+    

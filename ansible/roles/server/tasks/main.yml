@@ -1,0 +1,136 @@
+---
+
+# Need 2 steps, known issue with ansible. See for example https://github.com/xsnippet/xsnippet-infra/pull/26/commits/04b0c74870a15429f71e924600135bba8948f3ee
+
+- name: server_start_check_existance_of_installation_sources
+  stat:
+    path: /data/installsource/ArcGISServer
+  register: installsourceArcGIS_Server
+
+- name: First download ArcGIS_Server_Linux tar file
+  get_url:
+    url: "https://gisautomation.s3.eu-central-1.amazonaws.com/ArcGIS_Server_Linux_{{ arcgisserverfileversion }}.tar.gz"
+    dest: "/data/tmp/ArcGIS_Server_Linux_{{ arcgisserverfileversion }}.tar.gz"
+    tmp_dest: /data/tmp
+  when: not installsourceArcGIS_Server.stat.exists
+
+# - name: Copy install files 
+#   copy:
+#     src: /data/ansible/files/ArcGIS_Server_Linux_{{ arcgisserverfileversion }}.tar.gz
+#     dest: /data/tmp/ArcGIS_Server_Linux_{{ arcgisserverfileversion }}.tar.gz
+#     owner: azureuser
+#     group: azureuser
+#     mode: '0640'
+#   when: not installsourceArcGIS_Server.stat.exists
+
+- name: Extract ArcGIS_Server_Linux tar file
+  unarchive:
+    src: "/data/tmp/ArcGIS_Server_Linux_{{ arcgisserverfileversion }}.tar.gz"
+    dest: /data/installsource
+    remote_src: true
+  when: not installsourceArcGIS_Server.stat.exists
+
+- name: Cleanup ArcGIS_Server_Linux tar.gz file
+  file:
+    state: absent
+    path: "/data/tmp/ArcGIS_Server_Linux_{{ arcgisserverfileversion }}.tar.gz"
+
+- name: Copy authorization keyfiles 
+  copy:
+    src: /data/ansible/files/ArcGISGISServerAdvanced_ArcGISServer_{{ arcgisserverkeyfileversion }}.prvc
+    dest: /data/installsource/ArcGISGISServerAdvanced_ArcGISServer_{{ arcgisserverkeyfileversion }}.prvc
+    owner: azureuser
+    group: azureuser
+    mode: '0640'
+
+- name: Copy python script for creating site
+  copy:
+    src: roles/server/files/script-site.py
+    dest: /data/installsource/script-site.py
+    owner: azureuser
+    group: azureuser
+    mode: '0750'
+
+- name: Install ArcGIS Server
+  shell: cd /data/installsource/ArcGISServer;./Setup -m silent -l yes -a /data/installsource/ArcGISGISServerAdvanced_ArcGISServer_{{ arcgisserverkeyfileversion }}.prvc -d /data 2>&1|tee /data/tmp/install.log
+  become_user: azureuser
+  args:
+    creates: /data/arcgis/server/startserver.sh
+  register: installedarcgisserver
+
+- name: arcgiserver install debug
+  debug:
+    var: installedarcgisserver
+
+- name: Stop ArcGIS Server after installation
+  shell: /data/arcgis/server/stopserver.sh
+  become_user: azureuser
+  when: installedarcgisserver.changed
+
+- name: Copy arcgis service file to enable the arcgis service
+  copy:
+    src: /data/arcgis/server/framework/etc/scripts/arcgisserver.service
+    remote_src: yes
+    dest: /etc/systemd/system
+    mode: '600'
+
+# Ansible modules do NOT work in combination with specific sudo rules.
+# Because of this using shell commands to manually enable arcgisserver systemd service and start the systemd service
+- name: Check if arcgisserver service is disabled
+  shell: "sudo systemctl status arcgisserver|grep Loaded|grep '; disabled;'|wc -l"
+  args:
+    warn: false
+  register: arcgisserver_disabled
+  changed_when: false
+
+- name: Enable service if disabled
+  shell: sudo systemctl enable arcgisserver
+  args:
+    warn: false
+  when: arcgisserver_disabled.stdout|int == 1
+
+- name: wait for server to restart
+  wait_for: timeout=90
+  when: installedarcgisserver.changed
+
+- name: Check if arcgisserver service is running
+  shell: "systemctl status arcgisserver|grep Active:|grep 'active (running)'|wc -l"
+  args:
+    warn: false
+  register: arcgisserver_isrunning
+  changed_when: false
+
+- name: Start service arcgisserver if it is not running
+  shell: sudo systemctl start arcgisserver
+  args:
+    warn: false
+  when: arcgisserver_isrunning.stdout|int == 0
+
+- name: wait for server to start
+  wait_for: timeout=30
+  when: installedarcgisserver.changed
+
+- name: Check if site is created by checking existing config-store folder
+  stat:
+    path: /data/arcgis/server/usr/config-store
+  register: stat_result
+
+- name: Authorize ArcGIS Server
+  shell: cd /data/arcgis/server/tools/;./authorizeSoftware -f /data/installsource/ArcGISGISServerAdvanced_ArcGISServer_{{ arcgisserverkeyfileversion }}.prvc
+  become_user: azureuser
+  register: arcgisserver_authorized
+  
+- name: Create site for ArcGIS Server
+  command: /data/arcgis/server/tools/python /data/installsource/script-site.py {{ siteadminpassword }}
+  become_user: azureuser
+  # environment:
+  #   siteadminpassword: $'{{ siteadminpassword }}'
+  tags: python
+  #when: installedarcgisserver.changed
+  register: agssitecreation
+  # when: stat_result.stat.exists == False
+
+- name: arcgiserver site creation debug
+  tags: python
+  debug:
+    var: agssitecreation

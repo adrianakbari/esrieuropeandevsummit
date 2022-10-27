@@ -1,0 +1,25 @@
+---
+
+- name: common_start_create_data_directory
+  file:
+    path: /data
+    state: directory
+    owner: azureuser
+    group: azureuser
+    mode: 0753
+  
+- name: Create /data/tmp directory
+  file:
+    path: /data/tmp
+    state: directory
+    owner: azureuser
+    group: azureuser
+    mode: 0755
+
+- name: Create installsource directory
+  file:
+    path: /data/installsource
+    state: directory
+    owner: azureuser
+    group: azureuser
+    mode: 0755

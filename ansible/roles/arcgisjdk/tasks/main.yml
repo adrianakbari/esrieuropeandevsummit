@@ -1,0 +1,55 @@
+---
+
+- name: jdk_start
+  file:
+    state: directory
+    path: /data/arcgis
+    mode: '0755'
+    owner: azureuser
+    group: azureuser
+
+- name: check existance jdk 
+  stat:
+    path: /data/arcgis/jdk{{ jdkversiondirname }}
+  register: jdkdir
+
+- name: First download jdk tar.gz file 
+  get_url:
+    url: https://gisautomation.s3.eu-central-1.amazonaws.com/jdk-{{ jdkversion }}_linux-x64_bin.tar.gz
+    dest: /data/tmp/jdk-{{ jdkversion }}-linux-x64_bin.tar.gz
+    tmp_dest: /data/tmp
+  when: not jdkdir.stat.exists
+
+# - name: Copy install files 
+#   copy:
+#     src: /data/ansible/files/jdk-{{ jdkversion }}_linux-x64_bin.tar.gz
+#     dest: /data/tmp/jdk-{{ jdkversion }}_linux-x64_bin.tar.gz
+#     owner: azureuser
+#     group: azureuser
+#     mode: '0640'
+#   when: not jdkdir.stat.exists
+
+- name: Extract jdk tar file
+  unarchive:
+    src: /data/tmp/jdk-{{ jdkversion }}-linux-x64_bin.tar.gz
+    dest: /data/arcgis
+    remote_src: true
+    mode: '0700'
+    owner: azureuser
+    group: azureuser
+  when: not jdkdir.stat.exists
+
+- name: Link to jdk
+  file:
+    state: link
+    src: /data/arcgis/jdk-{{ jdkversiondirname }}
+    dest: /data/arcgis/jdk
+    mode: '0755'
+    owner: azureuser
+    group: azureuser
+
+- name: Remove temp tar.gz file
+  file:
+    state: absent
+    path: /data/tmp/jdk-{{ jdkversion }}-linux-x64_bin.tar.gz
+

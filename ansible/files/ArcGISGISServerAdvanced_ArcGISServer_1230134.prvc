@@ -1,0 +1,24 @@
+// ArcGISGISServerAdvanced_ArcGISServer_1230134.prvc
+
+//Provision
+Provision ID=EEC3B65F-108C-4364-89BDFC76B44BC7AD
+Comment=
+
+
+// User Information
+First Name=Adrian
+Last Name=Akbari Haddad
+Organization=adrianakbari
+Department=
+Email=akbari.adrian@gmail.com
+Address 1=Kwikstraatlaan 42
+City=Zeist
+State/Province=UT
+Location Code=NL
+Location=NL
+Zip/Postal Code=3704GS
+Phone Number=0644321593
+// Version=11.0
+
+// Features and authorization numbers
+ArcGIS Server=ECP579535580

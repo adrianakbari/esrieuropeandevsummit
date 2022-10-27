@@ -1,0 +1,173 @@
+---
+
+- name: tomcat_start
+  file:
+    state: directory
+    path: /data/arcgis
+    mode: '0755'
+    owner: azureuser
+    group: azureuser
+
+- name: check existance tomcat
+  stat:
+    path: /data/arcgis/apache-tomcat-{{ tomcatversion }}
+  register: tomcatdir
+
+- name: First download tomcat tar.gz file 
+  get_url:
+    url: https://gisautomation.s3.eu-central-1.amazonaws.com/apache-tomcat-{{ tomcatversion }}.tar.gz
+    dest: /data/tmp/apache-tomcat-{{ tomcatversion }}.tar.gz
+    tmp_dest: /data/tmp
+  when: not tomcatdir.stat.exists
+
+# - name: Copy install files 
+#   copy:
+#     src: /data/ansible/files/apache-tomcat-{{ tomcatversion }}.tar.gz
+#     dest: /data/tmp/apache-tomcat-{{ tomcatversion }}.tar.gz
+#     owner: azureuser
+#     group: azureuser
+#     mode: '0640'
+#   when: not tomcatdir.stat.exists
+
+- name: Extract tomcat tar.gz file
+  unarchive:
+    src: /data/tmp/apache-tomcat-{{ tomcatversion }}.tar.gz
+    dest: /data/arcgis
+    remote_src: true
+    mode: '0700'
+    owner: azureuser
+    group: azureuser
+  when: not tomcatdir.stat.exists
+
+- name: Link to tomcat
+  file:
+    state: link
+    src: /data/arcgis/apache-tomcat-{{ tomcatversion }}
+    dest: /data/arcgis/tomcat
+    mode: '0755'
+    owner: azureuser
+    group: azureuser
+
+- name: Remove temp tar.gz file
+  file:
+    state: absent
+    path: /data/tmp/apache-tomcat-{{ tomcatversion }}.tar.gz
+
+- name: Tomcat environment file
+  copy:
+    src: tomcatenvironment
+    dest: /data/arcgis/tomcatenvironment
+    owner: azureuser
+    group: azureuser
+    mode: '0644'
+
+- name: Tomcat conf/server.xml file
+  copy:
+    src: server.xml
+    dest: /data/arcgis/tomcat/conf/server.xml
+    owner: azureuser
+    group: azureuser
+    mode: '0600'
+  register: tomcatserverfile
+#  when: versie  == "test"
+
+- name: Tomcat keystore file
+  copy:
+    src: myKeystore.p12
+    dest: /data/arcgis/tomcat/conf/myKeystore.p12
+    owner: azureuser
+    group: azureuser
+    mode: '0600'
+  when: versie == "test"
+
+- name: Tomcat service file
+  copy:
+    src: arcgistomcat.service
+    dest: /etc/systemd/system/arcgistomcat.service
+    owner: azureuser
+    group: azureuser
+    mode: '0600'
+  when: versie == "test"
+
+- name: Tomcat startup file
+  copy:
+    src: startup.sh
+    dest: /data/arcgis/tomcat/bin/startup.sh
+    owner: azureuser
+    group: azureuser
+    mode: '0700'
+  when: versie == "test"
+# - name: Tomcat 80 file
+#   copy:
+#     src: authbind
+#     dest: /etc/authbind/byport/80
+#     owner: azureuser
+#     group: azureuser
+#     mode: '777'
+#   register: tomcat80file
+# #  when: versie  == "test"
+
+# - name: Tomcat 443 file
+#   copy:
+#     src: authbind
+#     dest: /etc/authbind/byport/443
+#     owner: azureuser
+#     group: azureuser
+#     mode: '777'
+#   register: tomcat443file
+# #  when: versie  == "test"
+
+- name: Stop tomcat service if server.xml or keystore has been changed
+  shell: "sudo systemctl stop arcgistomcat"
+  args:
+    warn: false
+  # when: tomcatserverfile.changed
+
+- name: Check if service is disabled
+  shell: "sudo systemctl status arcgistomcat|grep Loaded|grep '; disabled;'|wc -l"
+  args:
+    warn: false
+  register: arcgistomcat_disabled
+  changed_when: false
+
+- name: Enable service if disabled
+  shell: sudo systemctl enable arcgistomcat
+  args:
+    warn: false
+  when: arcgistomcat_disabled.stdout|int == 1
+
+- name: Check if service is running
+  shell: "systemctl status arcgistomcat |grep Active:|grep 'active (running)'|wc -l"
+  args:
+    warn: false
+  register: arcgistomcat_isrunning
+  changed_when: false
+
+- name: Start service if it is not running
+  shell: sudo systemctl start arcgistomcat
+  register: tomcatstartup
+  args:
+    warn: false
+  when: arcgistomcat_isrunning.stdout|int == 0
+
+- name: tomcat startup debug
+  debug:
+    var: tomcatstartup
+
+# specially for ports below 1024 on tomcat
+# - name: change catalina logs owner
+#   shell: 'sudo chown -R azureuser: /data/arcgis/tomcat/logs/'
+
+# - name: Start service if it is not running
+#   shell: nohup authbind --deep /data/arcgis/tomcat/bin/catalina.sh start
+#   become_user: azureuser
+#   args:
+#     warn: false
+#   environment:
+#     JAVA_HOME: /data/arcgis/jdk
+#   when: arcgistomcat_isrunning.stdout|int == 0
+#   register: arcgistomcat_custom_startup
+
+# - name: tomcat custom startup debug
+#   debug:
+#     var: arcgistomcat_custom_startup

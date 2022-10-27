@@ -1,0 +1,59 @@
+---
+
+- hosts: arcgisdatastore:arcgisserver:arcgisportal:arcgiswebportal
+  vars_files:
+  - "vault.yml"
+  tasks:
+  - import_role:
+           name: common
+      
+- hosts: arcgisserver
+  vars_files:
+  - "vault.yml"
+  
+  tasks:
+  # - import_role:
+  #          name: postgresqlclient
+  - import_role:
+           name: server
+  # - import_role: 
+  #          name: insights
+    vars:
+      arcgisservicename: arcgisserver
+      arcgisstopcommand: /data/arcgis/server/stopserver.sh
+      # arcgisinsightinstallfile: /data/arcgis/server/framework/lib/server/insights-core.jar
+        
+- hosts: arcgisdatastore
+  vars_files:
+  - "vault.yml"
+
+  tasks:
+  - import_role:
+           name: datastore
+    
+- hosts: arcgisportal
+  vars_files:
+  - "vault.yml"
+
+  tasks:
+  - import_role:
+           name: portal
+  # - import_role:
+  #          name: insights
+    vars:
+      arcgisservicename: arcgisportal
+      arcgisstopcommand: /data/arcgis/portal/stopportal.sh
+      # arcgisinsightinstallfile: /data/arcgis/portal/apps/insights/index.html
+  
+- hosts: arcgiswebportal
+  vars_files:
+  - "vault.yml"
+
+  tasks:
+  - import_role:
+           name: arcgisjdk
+  - import_role:
+           name: arcgistomcat
+  - import_role:
+           name: webadaptor
+

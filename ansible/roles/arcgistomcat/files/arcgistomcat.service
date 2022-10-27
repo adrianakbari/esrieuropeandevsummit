@@ -1,0 +1,24 @@
+[Unit]
+Description=Tomcat
+After=network.target
+
+[Service]
+Type=forking
+
+User=azureuser
+
+Environment="JAVA_HOME=/data/arcgis/jdk"
+Environment="JAVA_OPTS=-Djava.security.egd=file:///dev/urandom"
+Environment="CATALINA_BASE=/data/arcgis/tomcat"
+Environment="CATALINA_HOME=/data/arcgis/tomcat"
+Environment="CATALINA_PID=/data/arcgis/tomcat/temp/tomcat.pid"
+Environment="CATALINA_OPTS=-Xms512M -Xmx1024M -server -XX:+UseParallelGC"
+
+ExecStart=/data/arcgis/tomcat/bin/startup.sh
+ExecStop=/data/arcgis/tomcat/bin/shutdown.sh
+
+RestartSec=10
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

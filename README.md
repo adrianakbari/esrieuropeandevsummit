@@ -33,9 +33,9 @@ sudo add-apt-repository --yes --update ppa:ansible/ansible
 1. siteadminpassword
 2. portaladminpassword
 - To run the script for Staging or Prod environemnts:
-1. check out the code that is commented in each task. uncomment the part that includes when: versie == "<version>"
-2. Create another inventory file named inventory_<version>
-3. run ansible: ansible-playbook -i inventory_<version> arcgis.yml --ask-pass --ask-vault-pass
+1. check out the code that is commented in each task. uncomment the part that includes when: versie == "{version}"
+2. Create another inventory file named inventory_{version}
+3. run ansible: ansible-playbook -i inventory_{version} arcgis.yml --ask-pass --ask-vault-pass
 - Tomcat is configured wtih ports 80 and 443. In case you need to use other ports:
 1. change the ports in server.xml
 2. If the ports < 1024, see tomcat docs for ports below 1024 on the server. One way is to use Authbind. Because Ansible doesnt support running shell command with Authbind, you  need  to modify the startup.sh. An example is provided in this repo where the deafult exec line is modified to:

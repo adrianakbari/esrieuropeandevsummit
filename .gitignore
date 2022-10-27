@@ -1,5 +1,6 @@
 # ansible/vault.yml
 files/*
+ansible/files/*
 *.pem
 *.p12
 *.key

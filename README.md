@@ -14,6 +14,7 @@ A HA GIS setting with 3 tiers. A web tier, A GIS tier and a DB tier.
 1. Check the prerequisite for ArcGIS Enterprise Implementation: https://enterprise.arcgis.com/en/system-requirements/latest/linux/arcgis-enterprise-overall-system-requirements.htm
 2. At least a self-signed SAN certificate in .p12 or .pfx format. Place this certificate in roles > arcgistomcat > files
 3. A sattelite server where you can download arcgis installation files. Or change ansible code to copy installation files from your local directory.
+4. Place arcgis portal (.json) and arcgis server (.prvc) files in ansible/files
 4. adjust parameters in ansible.cfg, inventory_test, arcgis.yml, arcgistomcat.service, tomcat server.xml, createportal.properties, server role > script-site.py
 
 ## Installation

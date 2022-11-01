@@ -2,13 +2,13 @@
 the repo for automating your GIS infrastructure. Esri European Dev Conference 2022
 
 ## Infrastructure Provisioning
-For this demo a multi-tier architecture is deployed using Teeraform. In case of interest please contact me on akbari.adrian@gmail.com
+For this demo a multi-tier architecture is deployed using Terraform. In case of interest please contact me on akbari.adrian@gmail.com
 
 ## Application Provisioning
-For this demo Ansible is chosed to be automation tool. Ansible can run on any cloud proveder and on on-prem. it also run on windows and linux. Ansible offers more options in comparision to other tools.
+For this demo Ansible is chosen to be automation tool. Ansible can run on any cloud proveder and on on-prem. it also run on windows and linux. Ansible offers more options in comparision to other tools.
 
 ## Architecture
-A HA GIS setting with 3 tiers. A web tier, A GIS tier and a DB tier. 
+A multi-tier architecture with 3 tiers: A web tier, A GIS tier and a Database tier. 
 
 ## Prerequisite
 1. Check the prerequisite for ArcGIS Enterprise Implementation: https://enterprise.arcgis.com/en/system-requirements/latest/linux/arcgis-enterprise-overall-system-requirements.htm
@@ -43,4 +43,5 @@ sudo add-apt-repository --yes --update ppa:ansible/ansible
 exec authbind --deep  "$PRGDIR"/"$EXECUTABLE" start "$@"
 
 ## Contact
+I love to hear what you think about my article or hear your questions.
 For any questions contact me on akbari.adrian@gmail.com
